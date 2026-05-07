@@ -1,0 +1,47 @@
+17:21:08:473  剛開機
+ascii
+[INA219] bus=4972mV shunt=1720uV current=17.20mA power=86mW
+
+17:21:09:494 有兩個喇叭
+ascii
+[INA219] bus=4972mV shunt=1010uV current=8.50mA power=50mW
+
+17:21:10:508 有兩個喇叭
+ascii
+[INA219] bus=4972mV shunt=1080uV current=13.50mA power=66mW
+
+17:21:11:527 有兩個喇叭
+ascii
+[INA219] bus=4972mV shunt=1100uV current=11.00mA power=56mW
+
+17:21:12:546 有兩個喇叭
+ascii
+[INA219] bus=4972mV shunt=880uV current=9.90mA power=50mW
+
+17:21:13:560 有兩個喇叭
+ascii
+[INA219] bus=4976mV shunt=900uV current=10.30mA power=52mW
+
+17:21:14:579 剩下1個喇叭
+ascii
+[INA219] bus=4972mV shunt=710uV current=7.10mA power=36mW
+
+17:21:15:596 剩下1個喇叭
+ascii
+[INA219] bus=4972mV shunt=400uV current=4.00mA power=20mW
+
+17:21:16:615 剩下1個喇叭
+ascii
+[INA219] bus=4972mV shunt=840uV current=8.40mA power=42mW
+
+17:21:17:632 喇叭都關閉
+ascii
+[INA219] bus=4980mV shunt=-20uV current=0.40mA power=4mW
+
+17:21:18:650 喇叭都關閉
+ascii
+[INA219] bus=4972mV shunt=-30uV current=0.00mA power=0mW
+
+17:21:19:666 喇叭都關閉
+ascii
+[INA219] bus=4972mV shunt=10uV current=0.10mA power=0mW
