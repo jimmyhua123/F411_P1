@@ -22,6 +22,8 @@ void SimTelemetry_Print(uint32_t tick_ms,
                         float target_right_volume,
                         float smooth_left_volume,
                         float smooth_right_volume);
+int32_t SimTelemetry_DegToCentiDeg(float deg);
+uint32_t SimTelemetry_VolumeToPercent(float volume);
 
 #ifdef __cplusplus
 }

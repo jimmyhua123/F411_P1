@@ -1,14 +1,12 @@
 #include "sim_telemetry.h"
 #include "bsp_uart_log.h"
 
-static int32_t SimTelemetry_DegToCentiDeg(float deg);
-static uint32_t SimTelemetry_VolumeToPercent(float volume);
-
 void SimTelemetry_PrintFormat(void)
 {
   LOG_Printf("[SIMFMT] SIM,ms,roll_cd,pitch_cd,head,target_l_pct,target_r_pct,smooth_l_pct,smooth_r_pct\r\n");
   LOG_Printf("[SIMFMT] SIM2,ms,mode,fault_hex,roll_cd,pitch_cd,head,target_l_pct,target_r_pct,smooth_l_pct,smooth_r_pct\r\n");
   LOG_Printf("[SIMFMT] SIM3,ms,mode,fault_hex,imu_hz,tel_hz,audio_en,roll_cd,pitch_cd,head,target_l_pct,target_r_pct,smooth_l_pct,smooth_r_pct\r\n");
+  LOG_Printf("[SIMFMT] TEL,ms,mode,fault_hex,imu_hz,tel_hz,audio_en,roll_cd,pitch_cd,head,target_l_pct,target_r_pct,smooth_l_pct,smooth_r_pct,bus_mv,shunt_uv,current_cma,power_mw,audio_rail\r\n");
 }
 
 void SimTelemetry_Print(uint32_t tick_ms,
@@ -62,7 +60,7 @@ void SimTelemetry_Print(uint32_t tick_ms,
   }
 }
 
-static int32_t SimTelemetry_DegToCentiDeg(float deg)
+int32_t SimTelemetry_DegToCentiDeg(float deg)
 {
   if (deg >= 0.0f)
   {
@@ -72,7 +70,7 @@ static int32_t SimTelemetry_DegToCentiDeg(float deg)
   return (int32_t)((deg * 100.0f) - 0.5f);
 }
 
-static uint32_t SimTelemetry_VolumeToPercent(float volume)
+uint32_t SimTelemetry_VolumeToPercent(float volume)
 {
   if (volume < 0.0f)
   {

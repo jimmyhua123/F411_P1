@@ -35,6 +35,7 @@
 #define POWER_MONITOR_PERIOD_MS 100U
 #define POWER_MONITOR_AVG_WINDOW 16U
 #define APP_ENABLE_POWER_TELEMETRY_LOG 0U
+#define APP_ENABLE_COMBINED_TELEMETRY 1U
 #define APP_ENABLE_SIM_TELEMETRY 0U
 
 typedef struct
@@ -78,7 +79,9 @@ static int32_t power_monitor_min_ma_x100 = 0L;
 static int32_t power_monitor_max_ma_x100 = 0L;
 static uint32_t power_monitor_sample_count = 0U;
 static uint32_t latest_bus_mv = 0U;
+static int32_t latest_shunt_uv = 0L;
 static int32_t latest_current_ma_x100 = 0L;
+static uint32_t latest_power_mw = 0U;
 static uint8_t data_logger_fault_latched = 0U;
 
 static void App_GetPowerPolicy(PowerPolicy_t *policy);
@@ -96,6 +99,11 @@ static void App_UpdatePowerMonitor(uint32_t now);
 static void App_ResetPowerMonitorStats(SystemMode_t mode);
 static void App_UpdatePowerMonitorStats(const ina219_sample_t *sample, power_sample_t *power_sample);
 static void App_PrintPowerSample(SystemMode_t mode, const power_sample_t *sample);
+static void App_PrintCombinedTelemetry(uint32_t now,
+                                       const PowerPolicy_t *policy,
+                                       float roll_deg,
+                                       float pitch_deg,
+                                       head_state_t head_state);
 static void App_PrintFixedSigned(int32_t value_x100);
 static void App_PrintFixedUnsigned(uint32_t value_x100);
 static void App_ForceFaultModeIfNeeded(uint32_t now);
@@ -165,7 +173,7 @@ void App_Init(void)
   }
   LOG_Printf("[Audio] boot master=20%%\r\n");
   LOG_Printf("[PWR] audio switch=%s\r\n", (AudioPower_IsOn() != 0U) ? "on" : "off");
-  if (APP_ENABLE_SIM_TELEMETRY != 0U)
+  if ((APP_ENABLE_SIM_TELEMETRY != 0U) || (APP_ENABLE_COMBINED_TELEMETRY != 0U))
   {
     SimTelemetry_PrintFormat();
   }
@@ -240,21 +248,32 @@ void App_MainLoop(void)
     App_UpdateAudioOutput();
     App_UpdateDataLogger(now);
 
-    if ((APP_ENABLE_SIM_TELEMETRY != 0U) &&
+    if (((APP_ENABLE_SIM_TELEMETRY != 0U) || (APP_ENABLE_COMBINED_TELEMETRY != 0U)) &&
         ((now - last_sim_telemetry_tick) >= policy.telemetry_period_ms))
     {
       last_sim_telemetry_tick = now;
-      SimTelemetry_Print(now,
-                         SystemMode_Get(&system_mode),
-                         FaultManager_GetFlags(&fault_manager),
-                         &policy,
-                         filtered_angle.roll_deg,
-                         filtered_angle.pitch_deg,
-                         head_state,
-                         AudioControl_GetLeftVolume() * master_volume,
-                         AudioControl_GetRightVolume() * master_volume,
-                         AudioVolumeSmoother_GetLeft(&volume_smoother),
-                         AudioVolumeSmoother_GetRight(&volume_smoother));
+      if (APP_ENABLE_SIM_TELEMETRY != 0U)
+      {
+        SimTelemetry_Print(now,
+                           SystemMode_Get(&system_mode),
+                           FaultManager_GetFlags(&fault_manager),
+                           &policy,
+                           filtered_angle.roll_deg,
+                           filtered_angle.pitch_deg,
+                           head_state,
+                           AudioControl_GetLeftVolume() * master_volume,
+                           AudioControl_GetRightVolume() * master_volume,
+                           AudioVolumeSmoother_GetLeft(&volume_smoother),
+                           AudioVolumeSmoother_GetRight(&volume_smoother));
+      }
+      if (APP_ENABLE_COMBINED_TELEMETRY != 0U)
+      {
+        App_PrintCombinedTelemetry(now,
+                                   &policy,
+                                   filtered_angle.roll_deg,
+                                   filtered_angle.pitch_deg,
+                                   head_state);
+      }
     }
   }
   else
@@ -459,7 +478,9 @@ static void App_UpdatePowerMonitor(uint32_t now)
   }
 
   latest_bus_mv = sample.bus_mv;
+  latest_shunt_uv = sample.shunt_uv;
   latest_current_ma_x100 = sample.current_ma_x100;
+  latest_power_mw = sample.power_mw;
   App_UpdatePowerMonitorStats(&sample, &power_sample);
   PowerReport_Record(mode, current_head_state, sample.current_ma_x100, now);
   if (APP_ENABLE_POWER_TELEMETRY_LOG != 0U)
@@ -597,6 +618,44 @@ static void App_PrintPowerSample(SystemMode_t mode, const power_sample_t *sample
   LOG_Printf(",max=");
   App_PrintFixedSigned(sample->current_max_ma_x100);
   LOG_Printf(",n=%lu\r\n", (unsigned long)sample->sample_count);
+}
+
+static void App_PrintCombinedTelemetry(uint32_t now,
+                                       const PowerPolicy_t *policy,
+                                       float roll_deg,
+                                       float pitch_deg,
+                                       head_state_t head_state)
+{
+  uint32_t imu_hz = 0U;
+  uint32_t telemetry_hz = 0U;
+  uint32_t audio_enabled = 0U;
+
+  if (policy != 0)
+  {
+    imu_hz = PowerPolicy_PeriodToHz(policy->imu_period_ms);
+    telemetry_hz = PowerPolicy_PeriodToHz(policy->telemetry_period_ms);
+    audio_enabled = policy->audio_enabled;
+  }
+
+  LOG_Printf("TEL,%lu,%s,%08lX,%lu,%lu,%lu,%ld,%ld,%s,%lu,%lu,%lu,%lu,%lu,%ld,%ld,%lu,%lu\r\n",
+             (unsigned long)now,
+             SystemMode_ToString(SystemMode_Get(&system_mode)),
+             (unsigned long)FaultManager_GetFlags(&fault_manager),
+             (unsigned long)imu_hz,
+             (unsigned long)telemetry_hz,
+             (unsigned long)audio_enabled,
+             (long)SimTelemetry_DegToCentiDeg(roll_deg),
+             (long)SimTelemetry_DegToCentiDeg(pitch_deg),
+             HeadSM_ToString(head_state),
+             (unsigned long)SimTelemetry_VolumeToPercent(AudioControl_GetLeftVolume() * master_volume),
+             (unsigned long)SimTelemetry_VolumeToPercent(AudioControl_GetRightVolume() * master_volume),
+             (unsigned long)SimTelemetry_VolumeToPercent(AudioVolumeSmoother_GetLeft(&volume_smoother)),
+             (unsigned long)SimTelemetry_VolumeToPercent(AudioVolumeSmoother_GetRight(&volume_smoother)),
+             (unsigned long)latest_bus_mv,
+             (long)latest_shunt_uv,
+             (long)latest_current_ma_x100,
+             (unsigned long)latest_power_mw,
+             (unsigned long)AudioPower_IsOn());
 }
 
 static void App_PrintFixedSigned(int32_t value_x100)
