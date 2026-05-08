@@ -22,6 +22,24 @@
 [INA219] bus=4972mV shunt=-30uV current=0.00mA power=0mW
 ```
 
+## MicroSD Logging Bring-Up Result
+
+- [x] SPI1 microSD wiring verified.
+- [x] FatFS mount succeeds.
+- [x] Logger creates numbered CSV files: `LOG000.CSV`, `LOG001.CSV`, ...
+- [x] CSV row sequence `seq` increments per row.
+- [x] CSV records ACTIVE rows with roll/pitch/audio/power fields.
+- [x] `FAULT_SD_LOG` is non-fatal; audio demo continues if SD is unavailable.
+
+Verified first SD capture:
+
+```csv
+seq,time_ms,mode,head,roll,pitch,lvol,rvol,bus_v,current_ma,audio_rail,fault
+1,1112,ACTIVE,CENTER,0.0,0.0,0.00,0.00,0.000,0.00,ON,0x00
+2,1315,ACTIVE,CENTER,0.2,4.8,0.20,0.20,4.960,-0.40,ON,0x00
+3,1545,ACTIVE,CENTER,0.3,4.8,0.20,0.20,4.960,-0.40,ON,0x00
+```
+
 這份清單用來確認目前韌體 demo 是否完整可展示、可量測、可寫進履歷。
 
 ## 1. 開機檢查

@@ -35,6 +35,7 @@ Fault manager with IMU / I2S / button-stuck fault flags
 INA219/GY-219 audio supply power monitor verified on 5V audio rail
 Mode-by-mode power telemetry with moving average and min/max current
 Power report summary for mode current statistics and demo acceptance
+MicroSD SPI/FatFS CSV data logger verified with LOG000.CSV output
 Throttled UART telemetry for external 3D simulator, with SIM / SIM2 / SIM3 formats
 ```
 
@@ -66,6 +67,19 @@ Acceptance:
   AUDIO_RAIL_CUTOFF=PASS
   Software silence reduces the audio rail from about 18 mA to about 5.6 mA.
   Hardware rail cutoff reduces the audio rail from about 5.6 mA to near 0 mA.
+```
+
+Current data-logging progress:
+
+```text
+MicroSD interface: SPI1 + FatFS user disk I/O
+SD wiring verified: PA5 SCK, PA6 MISO, PA7 MOSI, PB0 SD_CS
+File naming: LOG000.CSV, LOG001.CSV, ... first free file at boot
+CSV row sequence: seq increments once per written row
+Verified file: LOG000.CSV
+Verified sample count: 133 data rows in first bring-up capture
+Verified fields: seq, time_ms, mode, head, roll, pitch, lvol, rvol,
+                 bus_v, current_ma, audio_rail, fault
 ```
 
 ## Runtime Data Flow
@@ -255,6 +269,7 @@ Core/Inc/
   audio_volume_smoother.h
   bsp_uart_log.h
   button_event.h
+  data_logger.h
   fault_manager.h
   head_detect.h
   head_state_machine.h
@@ -276,6 +291,7 @@ Core/Src/
   audio_volume_smoother.c
   bsp_uart_log.c
   button_event.c
+  data_logger.c
   fault_manager.c
   head_detect.c
   head_state_machine.c
@@ -538,6 +554,72 @@ Verified INA219 bring-up sample:
 This confirms the GY-219 is visible at I2C address `0x40` and the 5V audio rail
 is being measured through `VIN+ -> VIN-`.
 
+MicroSD logger module:
+
+```text
+MicroSD VCC  -> module-rated supply, verified working during SD bring-up
+MicroSD GND  -> common GND
+MicroSD SCK  -> PA5 / SPI1_SCK
+MicroSD MISO -> PA6 / SPI1_MISO
+MicroSD MOSI -> PA7 / SPI1_MOSI
+MicroSD CS   -> PB0 / SD_CS GPIO output, idle high
+```
+
+The project uses CubeMX FatFS with a user-defined SPI disk I/O driver. `CMD0`
+is sent without a pre-ready wait during card reset; this was required for the
+verified module to enter SPI idle mode correctly.
+
+## MicroSD CSV Logging
+
+Boot success log:
+
+```text
+[SD] CMD0 try=1 r=0x01
+[SD] init CMD8 r=0x01
+[SD] disk ready type=SDHC
+[SD] init OK file=0:/LOG000.CSV
+```
+
+File naming:
+
+```text
+LOG000.CSV
+LOG001.CSV
+LOG002.CSV
+...
+```
+
+At boot, the firmware creates the first free `LOGnnn.CSV` file instead of
+appending to an old run. This keeps each demo capture separate.
+
+CSV header:
+
+```csv
+seq,time_ms,mode,head,roll,pitch,lvol,rvol,bus_v,current_ma,audio_rail,fault
+```
+
+Example verified rows from `LOG000.CSV`:
+
+```csv
+1,1112,ACTIVE,CENTER,0.0,0.0,0.00,0.00,0.000,0.00,ON,0x00
+2,1315,ACTIVE,CENTER,0.2,4.8,0.20,0.20,4.960,-0.40,ON,0x00
+3,1545,ACTIVE,CENTER,0.3,4.8,0.20,0.20,4.960,-0.40,ON,0x00
+```
+
+Logging policy:
+
+```text
+ACTIVE:     write one row every 200 ms
+MUTED:      write one row every 500 ms
+LOW_POWER:  write enter/exit event rows only
+FAULT:      write fault event row when possible
+DIAGNOSTIC: write DEMO_SUMMARY row at diagnostic completion
+```
+
+`FAULT_SD_LOG` is treated as a non-fatal logging warning. If the SD card is not
+ready, the audio/head-tracking demo continues instead of switching to FAULT
+mode. This keeps SD logging from masking the main demo behavior during bring-up.
+
 Diagnostic logs:
 
 ```text
@@ -585,6 +667,8 @@ and demo summary formats.
   changing IMU or audio timing.
 - If CubeMX regenerates `i2s.c`, confirm both `SPI2_TX` and `SPI3_TX` DMA remain
   circular and half-word aligned.
+- If CubeMX regenerates FatFS or GPIO code, confirm `PB0 / SD_CS` idles high and
+  `FATFS/Target/user_diskio.c` still contains the SPI SD implementation.
 - If CubeMX regenerates CMake files, recheck custom source files in
   `cmake/stm32cubemx/CMakeLists.txt`.
 
@@ -619,6 +703,7 @@ listed inside `set(MX_Application_Src ...)`:
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/audio_volume_smoother.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/bsp_uart_log.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/button_event.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/data_logger.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/fault_manager.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/head_detect.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/head_state_machine.c
@@ -646,6 +731,8 @@ low-power behavior, and UART telemetry for external visualization.
 
 ## Next Milestones
 
-1. Update the PC/web 3D simulator to prefer `SIM3,` telemetry when available.
-2. Add pitch-based audio behavior.
-3. Add yaw/gyro integration if full 3-axis orientation is needed.
+1. Capture a complete SD log across ACTIVE, HEAD_DOWN, MUTED, LOW_POWER, wake,
+   and DIAGNOSTIC.
+2. Update the PC/web 3D simulator to prefer `SIM3,` telemetry when available.
+3. Add pitch-based audio behavior.
+4. Add yaw/gyro integration if full 3-axis orientation is needed.

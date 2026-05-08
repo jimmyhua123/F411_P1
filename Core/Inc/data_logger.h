@@ -27,6 +27,7 @@ typedef struct
 typedef enum
 {
   DATA_LOGGER_OK = 0,
+  DATA_LOGGER_DISABLED,
   DATA_LOGGER_ERROR
 } DataLogger_Status_t;
 

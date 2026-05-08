@@ -51,7 +51,8 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, STATUS_LED_RED_Pin|STATUS_LED_GREEN_Pin|STATUS_LED_YELLOW_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(AUDIO_PWR_EN_GPIO_Port, AUDIO_PWR_EN_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : STATUS_LED_RED_Pin STATUS_LED_GREEN_Pin STATUS_LED_YELLOW_Pin */
@@ -61,7 +62,17 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : SD_CS_Pin */
+  GPIO_InitStruct.Pin = SD_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(SD_CS_GPIO_Port, &GPIO_InitStruct);
+
 /* USER CODE BEGIN 2 */
+  HAL_GPIO_WritePin(AUDIO_PWR_EN_GPIO_Port, AUDIO_PWR_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_SET);
+
   GPIO_InitStruct.Pin = AUDIO_PWR_EN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;

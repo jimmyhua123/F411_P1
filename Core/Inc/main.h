@@ -63,6 +63,8 @@ void Error_Handler(void);
 #define STATUS_LED_GREEN_GPIO_Port GPIOC
 #define STATUS_LED_YELLOW_Pin GPIO_PIN_15
 #define STATUS_LED_YELLOW_GPIO_Port GPIOC
+#define SD_CS_Pin GPIO_PIN_0
+#define SD_CS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 #ifndef VOLUME_BUTTON_Pin
@@ -72,10 +74,6 @@ void Error_Handler(void);
 #ifndef AUDIO_PWR_EN_Pin
 #define AUDIO_PWR_EN_Pin GPIO_PIN_8
 #define AUDIO_PWR_EN_GPIO_Port GPIOB
-#endif
-#ifndef SD_CS_Pin
-#define SD_CS_Pin GPIO_PIN_0
-#define SD_CS_GPIO_Port GPIOB
 #endif
 
 /* USER CODE END Private defines */

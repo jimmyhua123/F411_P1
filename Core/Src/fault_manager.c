@@ -4,6 +4,7 @@
 #define FAULT_IMU_LOST_LIMIT       5U
 #define FAULT_BUTTON_STUCK_MS      10000U
 #define FAULT_LOG_PERIOD_MS        1000U
+#define FAULT_SD_LOG_PERIOD_MS     10000U
 
 static void FaultManager_PrintFlags(uint32_t flags);
 static void FaultManager_PrintNames(uint32_t flags);
@@ -124,7 +125,8 @@ void FaultManager_UpdateLog(fault_manager_t *manager, uint32_t now_ms)
   }
 
   if ((flags == manager->last_reported_flags) &&
-      ((now_ms - manager->last_log_tick) < FAULT_LOG_PERIOD_MS))
+      ((now_ms - manager->last_log_tick) <
+       (((flags & ~((uint32_t)FAULT_SD_LOG)) == 0U) ? FAULT_SD_LOG_PERIOD_MS : FAULT_LOG_PERIOD_MS)))
   {
     return;
   }
@@ -177,6 +179,12 @@ static void FaultManager_PrintNames(uint32_t flags)
   if ((flags & FAULT_BUTTON_STUCK) != 0U)
   {
     LOG_Printf("%sBUTTON_STUCK", (need_separator != 0U) ? "|" : "");
+    need_separator = 1U;
+  }
+
+  if ((flags & FAULT_SD_LOG) != 0U)
+  {
+    LOG_Printf("%sSD_LOG", (need_separator != 0U) ? "|" : "");
     need_separator = 1U;
   }
 

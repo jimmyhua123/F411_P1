@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "dma.h"
+#include "fatfs.h"
 #include "i2c.h"
 #include "i2s.h"
 #include "spi.h"
@@ -99,9 +100,10 @@ int main(void)
   MX_DMA_Init();
   MX_I2C1_Init();
   MX_USART2_UART_Init();
-  MX_SPI1_Init();
   MX_I2S2_Init();
   MX_I2S3_Init();
+  MX_SPI1_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
   App_Init();
 

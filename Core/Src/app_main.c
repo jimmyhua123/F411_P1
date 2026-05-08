@@ -34,6 +34,7 @@
 #define LOW_POWER_WAKE_DELTA_DEG 10.0f
 #define POWER_MONITOR_PERIOD_MS 100U
 #define POWER_MONITOR_AVG_WINDOW 16U
+#define APP_ENABLE_POWER_TELEMETRY_LOG 0U
 #define APP_ENABLE_SIM_TELEMETRY 0U
 
 typedef struct
@@ -81,6 +82,7 @@ static int32_t latest_current_ma_x100 = 0L;
 static uint8_t data_logger_fault_latched = 0U;
 
 static void App_GetPowerPolicy(PowerPolicy_t *policy);
+static uint32_t App_GetFatalFaultFlags(void);
 static void App_BuildLogSnapshot(DataLogger_Snapshot_t *snapshot, uint32_t now);
 static void App_UpdateDataLogger(uint32_t now);
 static void App_CheckDataLoggerFault(void);
@@ -121,7 +123,7 @@ void App_Init(void)
   SystemMode_Init(&system_mode);
   FaultManager_Init(&fault_manager);
   PowerReport_Init();
-  if (DataLogger_Init() != DATA_LOGGER_OK)
+  if (DataLogger_Init() == DATA_LOGGER_ERROR)
   {
     FaultManager_SetFlags(&fault_manager, FAULT_SD_LOG);
     data_logger_fault_latched = 1U;
@@ -268,7 +270,7 @@ static void App_UpdateVolumeTarget(void)
   PowerPolicy_t policy;
 
   App_GetPowerPolicy(&policy);
-  if ((FaultManager_GetFlags(&fault_manager) != FAULT_NONE) ||
+  if ((App_GetFatalFaultFlags() != FAULT_NONE) ||
       (policy.audio_enabled == 0U))
   {
     AudioVolumeSmoother_SetTarget(&volume_smoother, 0.0f, 0.0f);
@@ -298,7 +300,7 @@ static void App_UpdateButtonEvents(uint32_t now)
     return;
   }
 
-  if (FaultManager_GetFlags(&fault_manager) != FAULT_NONE)
+  if (App_GetFatalFaultFlags() != FAULT_NONE)
   {
     return;
   }
@@ -337,7 +339,7 @@ static void App_UpdateDiagnosticHold(uint32_t now)
     return;
   }
 
-  if (FaultManager_GetFlags(&fault_manager) != FAULT_NONE)
+  if (App_GetFatalFaultFlags() != FAULT_NONE)
   {
     return;
   }
@@ -400,7 +402,7 @@ static void App_UpdateAutoLowPower(uint32_t now)
 {
   SystemMode_t previous_mode;
 
-  if (FaultManager_GetFlags(&fault_manager) != FAULT_NONE)
+  if (App_GetFatalFaultFlags() != FAULT_NONE)
   {
     return;
   }
@@ -460,7 +462,10 @@ static void App_UpdatePowerMonitor(uint32_t now)
   latest_current_ma_x100 = sample.current_ma_x100;
   App_UpdatePowerMonitorStats(&sample, &power_sample);
   PowerReport_Record(mode, current_head_state, sample.current_ma_x100, now);
-  App_PrintPowerSample(mode, &power_sample);
+  if (APP_ENABLE_POWER_TELEMETRY_LOG != 0U)
+  {
+    App_PrintPowerSample(mode, &power_sample);
+  }
 }
 
 static void App_ResetPowerMonitorStats(SystemMode_t mode)
@@ -623,7 +628,7 @@ static void App_ForceFaultModeIfNeeded(uint32_t now)
   SystemMode_t previous_mode;
   DataLogger_Snapshot_t snapshot;
 
-  if (FaultManager_GetFlags(&fault_manager) == FAULT_NONE)
+  if (App_GetFatalFaultFlags() == FAULT_NONE)
   {
     return;
   }
@@ -648,7 +653,7 @@ static void App_UpdateAudioOutput(void)
   App_GetPowerPolicy(&policy);
   App_UpdateVolumeTarget();
 
-  if ((FaultManager_GetFlags(&fault_manager) != FAULT_NONE) ||
+  if ((App_GetFatalFaultFlags() != FAULT_NONE) ||
       (policy.audio_enabled == 0U))
   {
     AudioTone_SetMute(1U);
@@ -840,6 +845,11 @@ static void App_DiagnosticBeep(float left_volume, float right_volume)
 static void App_GetPowerPolicy(PowerPolicy_t *policy)
 {
   PowerPolicy_Get(SystemMode_Get(&system_mode), policy);
+}
+
+static uint32_t App_GetFatalFaultFlags(void)
+{
+  return FaultManager_GetFlags(&fault_manager) & ~((uint32_t)FAULT_SD_LOG);
 }
 
 static void App_PrintPowerPolicy(SystemMode_t mode)
